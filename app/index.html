@@ -1058,7 +1058,9 @@ html, body {
 
   <div id="list-screen" class="screen on">
     <div class="hd">
-      <div class="t1">🗂 Картотека <span class="cnt" id="cnt">0</span></div>
+      <div class="t1">🗂 Картотека <span class="cnt" id="cnt">0</span>
+        <button onclick="openPlans()" style="margin-left:auto;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;font-family:inherit;font-size:12px;font-weight:800;padding:5px 11px;border-radius:9px;cursor:pointer" id="protop">★ Pro</button>
+      </div>
       <div class="t2" id="who">база объектов риэлтора</div>
       <div class="searchrow"><input id="search" placeholder="Поиск: адрес, цена, заметка…" oninput="render()"></div>
       <button class="sortbtn" id="sortb" onclick="cycleSort()"></button>
@@ -2089,7 +2091,24 @@ function sheet(on){ document.getElementById('sheet').classList.toggle('on',on); 
   render(); renderBuyers(); navBadge();
   resumePayment();
   if(location.search.includes('pay=ok')){ toast('Проверяю оплату…'); history.replaceState(null,'',location.pathname); }
-  if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
+  if('serviceWorker' in navigator){
+    try{
+      const reg=await navigator.serviceWorker.register('sw.js');
+      reg.update();
+      setInterval(()=>reg.update(), 60*60*1000);
+      let reloading=false;
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{
+        if(reloading)return; reloading=true; location.reload();
+      });
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;
+        if(!nw)return;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed'&&navigator.serviceWorker.controller) toast('Обновляю приложение…');
+        });
+      });
+    }catch(e){}
+  }
 })();
 </script>
 </body>

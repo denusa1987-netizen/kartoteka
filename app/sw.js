@@ -1,5 +1,5 @@
 // Картотека: офлайн-кэш оболочки приложения
-const CACHE = 'kartoteka-v2';
+const CACHE = 'kartoteka-v5';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
