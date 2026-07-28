@@ -8,7 +8,7 @@ import os
 import urllib.request
 
 TOKEN = os.environ["TG_BOT_TOKEN"]
-APP_URL = "https://denusa1987-netizen.github.io/kartoteka/"
+APP_URL = "https://denusa1987-netizen.github.io/kartoteka/app/"
 
 WELCOME = (
     "🗂 <b>Картотека</b> — база объектов риэлтора в телефоне.\n\n"
