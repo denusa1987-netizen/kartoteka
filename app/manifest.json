@@ -1,0 +1,16 @@
+{
+  "name": "Картотека — база объектов риэлтора",
+  "short_name": "Картотека",
+  "description": "База объектов и покупателей для риэлтора: карточки, приватные данные, презентации клиенту в один тап",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f4f0",
+  "theme_color": "#0f172a",
+  "lang": "ru",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

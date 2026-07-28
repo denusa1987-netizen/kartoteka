@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Картотека — база объектов риэлтора</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f172a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
@@ -971,31 +966,6 @@ html, body {
   font-weight: 500;
 }
 
-
-/* ================= BUYERS ================= */
-.buy{background:var(--card);border-radius:18px;margin-bottom:14px;cursor:pointer;border:1px solid rgba(0,0,0,.04);
-  box-shadow:0 10px 25px -5px rgba(15,23,42,.05);padding:16px 17px;transition:all .25s cubic-bezier(.16,1,.3,1)}
-.buy:active{transform:scale(.985)}
-.buy .bt{display:flex;align-items:baseline;gap:9px;margin-bottom:3px}
-.buy .bn{font-size:16.5px;font-weight:800;letter-spacing:-.01em}
-.buy .bs{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em;color:#fff;margin-left:auto}
-.s-new{background:linear-gradient(135deg,#2563eb,#3b82f6)}
-.s-show{background:linear-gradient(135deg,#d97706,#f59e0b)}
-.s-deal{background:linear-gradient(135deg,#059669,#10b981)}
-.s-off{background:linear-gradient(135deg,#475569,#64748b)}
-.buy .bbud{font-size:19px;font-weight:800;margin:6px 0 2px;letter-spacing:-.02em}
-.buy .bw{color:var(--soft);font-size:13.5px;font-weight:500;line-height:1.4}
-.buy .bmeta{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;font-size:11.5px}
-.buy .bmeta span{background:#f1f5f9;color:#334155;border-radius:6px;padding:3px 9px;font-weight:600;border:1px solid rgba(0,0,0,.03)}
-.mtag{display:inline-block;background:var(--gold-light,#f6efe1);color:#8a6a24;border:1px solid rgba(184,146,65,.3);
-  border-radius:8px;padding:3px 10px;font-size:11.5px;font-weight:700;margin-top:8px}
-.matchcard{display:flex;gap:12px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:13px;margin-bottom:9px;background:#fff;cursor:pointer}
-.matchcard img{width:64px;height:52px;object-fit:cover;border-radius:9px;flex:0 0 auto}
-.matchcard .mph{width:64px;height:52px;border-radius:9px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto}
-.matchcard .mi{flex:1;min-width:0}
-.matchcard .mp{font-weight:800;font-size:15px}
-.matchcard .ma{color:var(--mut);font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
 /* ================= PROFILE ================= */
 .pver {
   color: var(--mut);
@@ -1019,18 +989,6 @@ html, body {
     <div id="list"></div>
   </div>
 
-  <div id="buyers-screen" class="screen">
-    <div class="hd">
-      <div class="t1">👥 Покупатели <span class="cnt" id="bcnt">0</span></div>
-      <div class="t2">заявки клиентов: бюджет, что ищут, сроки</div>
-      <div class="searchrow"><input id="bsearch" placeholder="Поиск: имя, район, бюджет…" oninput="renderBuyers()"></div>
-    </div>
-    <div class="chips" id="bchips"></div>
-    <div id="blist"></div>
-  </div>
-
-  <div id="buyer-screen" class="screen"></div>
-  <div id="bform-screen" class="screen"></div>
   <div id="detail-screen" class="screen"></div>
   <div id="form-screen" class="screen"></div>
   <div id="pdf-screen" class="screen"></div>
@@ -1059,8 +1017,7 @@ html, body {
 
   <div id="nav">
     <button id="nb-list" class="on" onclick="go('list')"><span class="ic">🗂</span>Объекты</button>
-    <button id="nb-buyers" onclick="go('buyers')"><span class="ic">👥</span>Покупатели</button>
-    <button id="nb-add" onclick="addNew()"><span class="ic">➕</span>Добавить</button>
+    <button id="nb-form" onclick="openForm()"><span class="ic">➕</span>Добавить</button>
     <button id="nb-profile" onclick="openProfile()"><span class="ic">👤</span>Профиль</button>
   </div>
 
@@ -1078,13 +1035,8 @@ if (TG) { try { TG.ready(); TG.expand(); } catch(e){} }
 /* ================= DB (IndexedDB) ================= */
 let db;
 function idb(){ return new Promise((res,rej)=>{
-  const r=indexedDB.open('kartoteka',2);
-  r.onupgradeneeded=e=>{
-    const d=e.target.result;
-    if(!d.objectStoreNames.contains('objects')) d.createObjectStore('objects',{keyPath:'id'});
-    if(!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
-    if(!d.objectStoreNames.contains('buyers')) d.createObjectStore('buyers',{keyPath:'id'});
-  };
+  const r=indexedDB.open('kartoteka',1);
+  r.onupgradeneeded=e=>{ e.target.result.createObjectStore('objects',{keyPath:'id'}); e.target.result.createObjectStore('kv'); };
   r.onsuccess=e=>res(e.target.result); r.onerror=()=>rej(r.error);
 });}
 function tx(store,mode){ return db.transaction(store,mode).objectStore(store); }
@@ -1093,15 +1045,9 @@ function dbPut(o){ return new Promise(res=>{ tx('objects','readwrite').put(o).on
 function dbDel(id){ return new Promise(res=>{ tx('objects','readwrite').delete(id).onsuccess=()=>res(); }); }
 function kvGet(k){ return new Promise(res=>{ const q=tx('kv','readonly').get(k); q.onsuccess=()=>res(q.result); }); }
 function kvSet(k,v){ return new Promise(res=>{ tx('kv','readwrite').put(v,k).onsuccess=()=>res(); }); }
-function buyAll(){ return new Promise(res=>{ const q=tx('buyers','readonly').getAll(); q.onsuccess=()=>res(q.result||[]); }); }
-function buyPut(b){ return new Promise(res=>{ tx('buyers','readwrite').put(b).onsuccess=()=>res(); }); }
-function buyDel(id){ return new Promise(res=>{ tx('buyers','readwrite').delete(id).onsuccess=()=>res(); }); }
 
 /* ================= STATE ================= */
 let OBJ=[], filter='all', cur=null, slide=0, editId=null, formPhotos=[], formFeats=[];
-let BUY=[], bfilter='all', bcur=null, beditId=null;
-const B_LABEL={new:'Новый',show:'На показах',deal:'Сделка',off:'Отказ'};
-const B_CLASS={new:'s-new',show:'s-show',deal:'s-deal',off:'s-off'};
 let PROFILE={name:'',title:'',phone:'',tg:''};
 const ST_LABEL={sale:'В продаже',avans:'Аванс',sold:'Продано'};
 const ST_CLASS={sale:'b-sale',avans:'b-avans',sold:'b-sold'};
@@ -1113,7 +1059,7 @@ function cloudBackup(){
   if(!TG || !TG.CloudStorage) return;
   try{
     const light=OBJ.map(o=>({...o,photos:[]}));
-    const s=JSON.stringify({v:2,profile:PROFILE,objects:light,buyers:BUY});
+    const s=JSON.stringify({v:1,profile:PROFILE,objects:light});
     const chunks=[]; for(let i=0;i<s.length;i+=3800) chunks.push(s.slice(i,i+3800));
     TG.CloudStorage.setItem('meta',String(chunks.length),()=>{});
     chunks.forEach((c,i)=>TG.CloudStorage.setItem('d'+i,c,()=>{}));
@@ -1129,9 +1075,7 @@ function cloudRestore(){
       try{
         const s=keys.map(k=>vals[k]||'').join('');
         const data=JSON.parse(s);
-        for(const o of (data.objects||[])){ const ex=OBJ.find(x=>x.id===o.id); if(!ex) await dbPut(o); }
-        for(const b of (data.buyers||[])){ const ex=BUY.find(x=>x.id===b.id); if(!ex) await buyPut(b); }
-        BUY=await buyAll(); renderBuyers();
+        for(const o of data.objects){ const ex=OBJ.find(x=>x.id===o.id); if(!ex) await dbPut(o); }
         if(data.profile && data.profile.name) { PROFILE=data.profile; await kvSet('profile',PROFILE); }
         OBJ=await dbAll(); render(); toast('Восстановлено из облака: '+data.objects.length+' объектов');
       }catch(err){ toast('Копия повреждена'); }
@@ -1172,17 +1116,13 @@ function render(){
 }
 
 /* ================= SCREENS ================= */
-let lastTab='list';
 function go(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  const el=document.getElementById(name+'-screen'); if(!el)return;
-  el.classList.add('on');
-  if(name==='list'||name==='buyers') lastTab=name;
-  ['list','buyers','profile'].forEach(n=>{const b=document.getElementById('nb-'+n);if(b)b.classList.toggle('on',n==name)});
+  document.getElementById(name+'-screen').classList.add('on');
+  ['list','form','profile'].forEach(n=>{const b=document.getElementById('nb-'+n);if(b)b.classList.toggle('on',n==name)});
   window.scrollTo(0,0);
-  if(TG){ try{ (name=='list'||name=='buyers')?TG.BackButton.hide():TG.BackButton.show(); }catch(e){} }
+  if(TG){ try{ name=='list'?TG.BackButton.hide():TG.BackButton.show(); }catch(e){} }
 }
-function addNew(){ lastTab==='buyers' ? openBuyerForm() : openForm(); }
 if(TG){ try{ TG.BackButton.onClick(()=>go('list')); }catch(e){} }
 
 function openDetail(id){
@@ -1468,166 +1408,6 @@ function shareText(){
   navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast('Текст скопирован'));
 }
 
-
-/* ================= BUYERS ================= */
-function bchipsRender(){
-  const c=[['all','Все'],['new','Новые'],['show','На показах'],['deal','Сделка'],['off','Отказ']];
-  document.getElementById('bchips').innerHTML=c.map(([k,l])=>
-    `<div class="chip ${bfilter==k?'on':''}" onclick="bfilter='${k}';renderBuyers()">${l}</div>`).join('');
-}
-function renderBuyers(){
-  bchipsRender();
-  document.getElementById('bcnt').textContent=BUY.length;
-  const q=(document.getElementById('bsearch').value||'').toLowerCase();
-  const rows=BUY.filter(b=>{
-    const okF=bfilter=='all'||b.status==bfilter;
-    const hay=(b.name+' '+(b.want||'')+' '+(b.area||'')+' '+b.budget+' '+(b.notes||'')).toLowerCase();
-    return okF&&(!q||hay.includes(q));
-  }).sort((a,b)=>b.created-a.created);
-  const el=document.getElementById('blist');
-  if(!BUY.length){
-    el.innerHTML=`<div class="empty"><div class="big">👥</div>База покупателей пуста.<br>Нажмите <b>➕ Добавить</b> — запишите заявку клиента:<br>бюджет, что ищет, сроки.</div>`;
-    return;
-  }
-  el.innerHTML=rows.map(b=>{
-    const m=matchCount(b);
-    return `<div class="buy" onclick="openBuyer('${b.id}')">
-      <div class="bt"><span class="bn">${esc(b.name)}</span><span class="bs ${B_CLASS[b.status]}">${B_LABEL[b.status]}</span></div>
-      <div class="bbud">${fmt(b.budget)}${b.mortgage?' · ипотека':' · наличные'}</div>
-      <div class="bw">${esc(b.want||'—')}</div>
-      <div class="bmeta">${b.area?`<span>${esc(b.area)}</span>`:''}${b.rooms?`<span>${esc(b.rooms)} комн.</span>`:''}${b.deadline?`<span>до ${esc(b.deadline)}</span>`:''}</div>
-      ${m?`<div class="mtag">🎯 подходит объектов: ${m}</div>`:''}
-    </div>`;
-  }).join('')||'<div class="empty">Ничего не найдено</div>';
-}
-function matchList(b){
-  const bud=+b.budget||0; if(!bud) return [];
-  const lo=bud*0.85, hi=bud*1.05;
-  return OBJ.filter(o=>o.status!=='sold' && o.price>=lo && o.price<=hi &&
-    (!b.type||b.type==='Любой'||o.type===b.type)).sort((a,c)=>a.price-c.price);
-}
-function matchCount(b){ return matchList(b).length; }
-
-function openBuyer(id){
-  bcur=BUY.find(b=>b.id===id); if(!bcur)return;
-  const b=bcur, ms=matchList(b);
-  document.getElementById('buyer-screen').innerHTML=`
-    <div class="dhead"><button onclick="go('buyers')">‹</button><div class="dt">${esc(b.name)}</div></div>
-    <div class="dbody">
-      <div class="dprice">${fmt(b.budget)}</div>
-      <div class="daddr">${b.mortgage?'Ипотека одобрена':'Наличные'}${b.own?' · есть что продать':''}</div>
-      <div class="statusrow">
-        ${Object.keys(B_LABEL).map(k=>`<div class="st ${b.status==k?'on-'+(k=='deal'?'sale':k=='show'?'avans':'sold'):''}" onclick="setBStatus('${k}')">${B_LABEL[k]}</div>`).join('')}
-      </div>
-      <div class="sect"><h3>Что ищет</h3>
-        <div class="notes">${esc(b.want||'—')}</div>
-        <div class="kv" style="margin-top:11px">
-          ${b.type?`<div><b>Тип</b>${esc(b.type)}</div>`:''}
-          ${b.rooms?`<div><b>Комнат</b>${esc(b.rooms)}</div>`:''}
-          ${b.area?`<div><b>Район</b>${esc(b.area)}</div>`:''}
-          ${b.deadline?`<div><b>Срок</b>${esc(b.deadline)}</div>`:''}
-        </div>
-      </div>
-      ${b.notes?`<div class="sect"><h3>Заметки</h3><div class="notes">${esc(b.notes)}</div></div>`:''}
-      <div class="sect priv"><h3>🔒 Контакты клиента</h3>
-        <div class="kv">
-          ${b.phone?`<div><b>Телефон</b><a href="tel:${b.phone.replace(/[^+\d]/g,'')}" style="color:var(--acc);text-decoration:none">${esc(b.phone)}</a></div>`:''}
-          ${b.source?`<div><b>Откуда пришёл</b>${esc(b.source)}</div>`:''}
-        </div>
-        <div class="hint">Видно только вам</div>
-      </div>
-      <div class="sect"><h3>🎯 Подходящие объекты (${ms.length})</h3>
-        ${ms.length?ms.map(o=>`<div class="matchcard" onclick="openDetail('${o.id}')">
-            ${o.photos.length?`<img src="${o.photos[0]}">`:`<div class="mph">🏠</div>`}
-            <div class="mi"><div class="mp">${fmt(o.price)}</div><div class="ma">${esc(o.type)} · ${esc(o.addr)}</div></div>
-          </div>`).join(''):`<div class="notes" style="color:var(--mut)">Пока нет объектов в бюджете клиента. Добавьте объекты — подбор обновится сам.</div>`}
-      </div>
-      <div class="actions">
-        <button class="abtn a1" onclick="shareMatches()">📤 Отправить подборку<small>объекты в бюджете клиента</small></button>
-        <button class="abtn a2" onclick="openBuyerForm('${b.id}')">✏️ Изменить<small>бюджет · запрос · статус</small></button>
-      </div>
-      <button class="a3" onclick="delBuyer('${b.id}')">🗑 Удалить покупателя</button>
-    </div>`;
-  go('buyer');
-}
-async function setBStatus(k){ bcur.status=k; await buyPut(bcur); BUY=await buyAll(); openBuyer(bcur.id); renderBuyers(); toast('Статус: '+B_LABEL[k]); cloudBackup(); }
-async function delBuyer(id){
-  let ok;
-  try{ ok = TG&&TG.showConfirm ? await new Promise(r=>TG.showConfirm('Удалить покупателя?',r)) : confirm('Удалить покупателя?'); }
-  catch(e){ ok = confirm('Удалить покупателя?'); }
-  if(!ok)return;
-  await buyDel(id); BUY=await buyAll(); renderBuyers(); go('buyers'); toast('Удалено'); cloudBackup();
-}
-function shareMatches(){
-  const b=bcur, ms=matchList(b);
-  if(!ms.length){ toast('Пока нечего отправлять'); return; }
-  const t=`Подборка для ${b.name} (бюджет ${fmt(b.budget)}):\n\n`+
-    ms.map((o,i)=>`${i+1}. ${o.type} · ${o.addr}\n   ${fmt(o.price)}${o.area?' · '+o.area:''}`).join('\n\n')+
-    `\n\n${PROFILE.name||''} ${PROFILE.phone||''}`.trimEnd();
-  if(TG){ TG.openTelegramLink('https://t.me/share/url?url=%20&text='+encodeURIComponent(t)); return; }
-  if(navigator.share){ navigator.share({text:t}).catch(()=>{}); return; }
-  navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast('Подборка скопирована'));
-}
-
-function openBuyerForm(id){
-  beditId=id||null;
-  const b=id?BUY.find(x=>x.id===id):null;
-  document.getElementById('bform-screen').innerHTML=`
-    <div class="dhead"><button onclick="go(beditId?'buyer':'buyers')">‹</button><div class="dt">${b?'Редактирование':'Новый покупатель'}</div></div>
-    <div class="form">
-      <label>Имя клиента *</label>
-      <input id="b-name" value="${b?esc(b.name):''}" placeholder="Анна Петрова">
-      <label>🔒 Телефон</label>
-      <input id="b-phone" inputmode="tel" value="${b?esc(b.phone||''):''}" placeholder="+7 ___ ___-__-__">
-      <label>Бюджет, ₽ *</label>
-      <input id="b-budget" inputmode="numeric" value="${b?b.budget:''}" placeholder="2600000">
-      <label>Чем платит</label>
-      <select id="b-mort">
-        <option value="1" ${b&&b.mortgage?'selected':''}>Ипотека (одобрена)</option>
-        <option value="0" ${b&&!b.mortgage?'selected':''}>Наличные</option>
-      </select>
-      <label>Что ищет (своими словами)</label>
-      <textarea id="b-want" rows="2" placeholder="2-комн. рядом со школой, не первый этаж">${b?esc(b.want||''):''}</textarea>
-      <div class="row2">
-        <div><label>Тип</label><select id="b-type">${['Любой','Квартира','Дом','Участок','Коммерция'].map(t=>`<option ${b&&b.type==t?'selected':''}>${t}</option>`).join('')}</select></div>
-        <div><label>Комнат</label><input id="b-rooms" value="${b?esc(b.rooms||''):''}" placeholder="2"></div>
-      </div>
-      <div class="row2">
-        <div><label>Район</label><input id="b-area" value="${b?esc(b.area||''):''}" placeholder="центр"></div>
-        <div><label>Срок покупки</label><input id="b-deadline" value="${b?esc(b.deadline||''):''}" placeholder="до сентября"></div>
-      </div>
-      <label>Условия и заметки</label>
-      <textarea id="b-notes" rows="3" placeholder="Есть квартира на продажу, нужна альтернатива. Маткапитал. Смотрит по выходным.">${b?esc(b.notes||''):''}</textarea>
-      <label>Есть что продать (альтернатива)</label>
-      <select id="b-own">
-        <option value="0" ${b&&!b.own?'selected':''}>Нет, свободные деньги</option>
-        <option value="1" ${b&&b.own?'selected':''}>Да, сначала продаём</option>
-      </select>
-      <label>Откуда пришёл</label>
-      <input id="b-source" value="${b?esc(b.source||''):''}" placeholder="Авито / рекомендация / соцсети">
-      <button class="fbtn" onclick="saveBuyer()">Сохранить</button>
-    </div>`;
-  go('bform');
-}
-async function saveBuyer(){
-  const v=id=>document.getElementById(id).value.trim();
-  const name=v('b-name'), budget=parseInt(v('b-budget').replace(/\D/g,''))||0;
-  if(!name||!budget){ toast('Имя и бюджет обязательны'); return; }
-  const prev=beditId?BUY.find(x=>x.id===beditId):null;
-  const b={
-    id: beditId||('b'+Date.now()),
-    name, phone:v('b-phone'), budget,
-    mortgage: v('b-mort')==='1',
-    want:v('b-want'), type:v('b-type'), rooms:v('b-rooms'), area:v('b-area'),
-    deadline:v('b-deadline'), notes:v('b-notes'),
-    own: v('b-own')==='1', source:v('b-source'),
-    status: prev?prev.status:'new',
-    created: prev?prev.created:Date.now(),
-  };
-  await buyPut(b); BUY=await buyAll(); renderBuyers(); cloudBackup();
-  toast('Сохранено'); openBuyer(b.id);
-}
-
 /* ================= PROFILE ================= */
 function openProfile(){
   document.getElementById('pf-name').value=PROFILE.name||'';
@@ -1648,7 +1428,7 @@ async function saveProfile(){
   toast('Профиль сохранён'); go('list');
 }
 async function exportAll(){
-  const data=JSON.stringify({v:2,profile:PROFILE,objects:OBJ,buyers:BUY});
+  const data=JSON.stringify({v:1,profile:PROFILE,objects:OBJ});
   const b=new Blob([data],{type:'application/json'});
   dl(URL.createObjectURL(b),'kartoteka-backup.json');
   toast('Файл базы скачан');
@@ -1659,11 +1439,9 @@ function importAll(inp){
   r.onload=async()=>{
     try{
       const data=JSON.parse(r.result);
-      for(const o of (data.objects||[])) await dbPut(o);
-      for(const b of (data.buyers||[])) await buyPut(b);
-      BUY=await buyAll(); renderBuyers();
+      for(const o of data.objects) await dbPut(o);
       if(data.profile&&data.profile.name){ PROFILE=data.profile; await kvSet('profile',PROFILE); }
-      OBJ=await dbAll(); render(); toast('Импортировано: '+(data.objects||[]).length+' объектов, '+(data.buyers||[]).length+' покупателей');
+      OBJ=await dbAll(); render(); toast('Импортировано: '+data.objects.length+' объектов');
     }catch(e){ toast('Файл не распознан'); }
   };
   r.readAsText(f);
@@ -1678,15 +1456,13 @@ function sheet(on){ document.getElementById('sheet').classList.toggle('on',on); 
 (async function(){
   db=await idb();
   OBJ=await dbAll();
-  BUY=await buyAll();
   PROFILE=(await kvGet('profile'))||PROFILE;
   if(PROFILE.name)document.getElementById('who').textContent=PROFILE.name+' · '+(PROFILE.title||'риэлтор');
   if(TG&&TG.CloudStorage){
     document.getElementById('cloudnote').innerHTML=' · <a href="#" onclick="cloudRestore();return false" style="color:var(--acc)">восстановить из облака Telegram</a>';
     if(!OBJ.length) cloudRestore();
   }
-  render(); renderBuyers();
-  if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
+  render();
 })();
 </script>
 </body>
