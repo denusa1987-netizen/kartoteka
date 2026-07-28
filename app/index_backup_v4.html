@@ -1852,57 +1852,11 @@ function openPlans(){
         <div class="pp">390 ₽ <small>/ месяц</small></div>
         <ul><li><b>без ограничения по объектам</b></li><li>всё из бесплатного</li><li>поддержка и новые функции первыми</li></ul>
         ${pro?`<div style="margin-top:12px;color:var(--green);font-weight:700;font-size:13.5px">✓ Активен${LIC.until?' до '+ru(new Date(LIC.until).toISOString().slice(0,10)):''}</div>`
-             :`<button class="fbtn" style="margin-top:14px" onclick="payPro(1)">💳 Оплатить 390 ₽ — месяц</button>
-               <button class="fbtn" style="margin-top:9px;background:linear-gradient(135deg,#b89241,#cfa452);color:#0f172a" onclick="payPro(12)">💳 Год — 3 900 ₽ <span style="font-weight:600">(2 месяца в подарок)</span></button>
-               <div style="text-align:center;color:var(--mut);font-size:11.5px;margin-top:9px">Оплата картой или СБП · чек на почту</div>
-               <button class="addfeat" style="margin-top:12px" onclick="sheet(false);askCode()">У меня есть код активации</button>`}
+             :`<button class="fbtn" style="margin-top:14px" onclick="sheet(false);buyPro()">Купить Pro</button>
+               <button class="addfeat" style="margin-top:9px" onclick="sheet(false);askCode()">У меня есть код активации</button>`}
       </div>
     </div>`;
   sheet(true);
-}
-async function payPro(months){
-  sheet(false); toast('Готовлю оплату…');
-  try{
-    const r=await fetch(LINK_API+'/api/pay/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({months})});
-    const j=await r.json();
-    if(!j.paymentUrl){ toast(j.error||'Не удалось создать платёж'); return; }
-    await kvSet('payorder',{orderId:j.orderId,months,ts:Date.now()});
-    if(TG&&TG.openLink) TG.openLink(j.paymentUrl); else window.open(j.paymentUrl,'_blank');
-    waitPayment(j.orderId, 60);
-    toast('Открыл страницу оплаты');
-  }catch(e){ toast('Нет связи с сервером оплаты'); }
-}
-async function waitPayment(orderId, tries){
-  for(let i=0;i<tries;i++){
-    await new Promise(s=>setTimeout(s,5000));
-    try{
-      const r=await fetch(LINK_API+'/api/pay/status?order='+encodeURIComponent(orderId));
-      const j=await r.json();
-      if(j.status==='CONFIRMED'&&j.until){
-        LIC={pro:true,until:j.until,code:'card:'+orderId};
-        await kvSet('lic',LIC); await kvSet('payorder',null);
-        render(); renderLimit(); sheet(false);
-        toast('Оплата прошла — Pro активирован 🎉');
-        return true;
-      }
-      if(j.status==='REJECTED'||j.status==='DEADLINE_EXPIRED'){ toast('Платёж не прошёл'); return false; }
-    }catch(e){}
-  }
-  return false;
-}
-async function resumePayment(){
-  const p=await kvGet('payorder');
-  if(!p||!p.orderId||isPro()) return;
-  if(Date.now()-p.ts > 3*3600*1000){ await kvSet('payorder',null); return; }
-  try{
-    const r=await fetch(LINK_API+'/api/pay/status?order='+encodeURIComponent(p.orderId));
-    const j=await r.json();
-    if(j.status==='CONFIRMED'&&j.until){
-      LIC={pro:true,until:j.until,code:'card:'+p.orderId};
-      await kvSet('lic',LIC); await kvSet('payorder',null);
-      render(); renderLimit(); toast('Оплата подтверждена — Pro активирован 🎉');
-    } else if(j.status==='NEW'||j.status==='AUTHORIZED'){ waitPayment(p.orderId, 24); }
-  }catch(e){}
 }
 function buyPro(){
   const t='Здравствуйте! Хочу оформить Pro в Картотеке.';
@@ -2087,8 +2041,6 @@ function sheet(on){ document.getElementById('sheet').classList.toggle('on',on); 
     if(!OBJ.length) cloudRestore();
   }
   render(); renderBuyers(); navBadge();
-  resumePayment();
-  if(location.search.includes('pay=ok')){ toast('Проверяю оплату…'); history.replaceState(null,'',location.pathname); }
   if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
 })();
 </script>
