@@ -402,13 +402,46 @@ async function saveObj(){
 }
 
 /* ================= SHARE / PDF ================= */
+const LINK_API='https://kartoteka-link.kartoteka.workers.dev';
 function openShare(){
   document.getElementById('sheet').innerHTML=`
     <h3>Отправить клиенту</h3>
     <p>Телефон собственника и заметки не попадут в презентацию</p>
+    <div class="shopt" onclick="shareLink()"><span class="i">🔗</span><span><b>Ссылка-витрина</b><small>клиент откроет красивую страницу объекта</small></span></div>
     <div class="shopt" onclick="sheet(false);sharePresentation('image')"><span class="i">🖼</span><span><b>Картинка-презентация</b><small>красивая карточка — сразу в чат клиенту</small></span></div>
     <div class="shopt" onclick="sheet(false);sharePresentation('pdf')"><span class="i">📄</span><span><b>PDF-презентация</b><small>файл с фото и вашими контактами</small></span></div>
     <div class="shopt" onclick="sheet(false);shareText()"><span class="i">💬</span><span><b>Текст объявления</b><small>скопировать или отправить текстом</small></span></div>`;
+  sheet(true);
+}
+async function shareLink(){
+  if(!cur)return;
+  sheet(false); toast('Создаю ссылку…');
+  try{
+    // публикуем ТОЛЬКО публичные поля (сервер приватное дополнительно режет)
+    const pub={
+      type:cur.type, addr:cur.addr, price:cur.price,
+      feat:(cur.feat||[]).filter(f=>f[0]&&f[1]),
+      photos:(cur.photos||[]).slice(0,8),
+      profile:PROFILE,
+    };
+    if(cur.linkId){
+      // ссылка уже была — просто показываем её снова
+      showLink(LINK_API+'/o/'+cur.linkId); return;
+    }
+    const r=await fetch(LINK_API+'/api/pub',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pub)});
+    const j=await r.json();
+    if(!j.id){ toast('Не получилось: '+(j.error||'ошибка сервера')); return; }
+    cur.linkId=j.id; await dbPut(cur); OBJ=await dbAll();
+    showLink(j.url);
+  }catch(e){ toast('Нет сети или сервер недоступен'); }
+}
+function showLink(link){
+  document.getElementById('sheet').innerHTML=`
+    <h3>Ссылка готова 🔗</h3>
+    <p style="word-break:break-all;color:var(--acc);font-size:14px">${link}</p>
+    <div class="shopt" onclick="sheet(false);(TG?TG.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('${link}')+'&text='+encodeURIComponent('${(cur?cur.type+' · '+cur.addr:'Объект').replace(/'/g,'')}')):window.open('${link}'))"><span class="i">📨</span><span><b>Отправить в Telegram</b><small>выбрать чат клиента</small></span></div>
+    <div class="shopt" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Ссылка скопирована'));sheet(false)"><span class="i">📋</span><span><b>Скопировать</b><small>вставить куда угодно</small></span></div>
+    <div class="shopt" onclick="window.open('${link}');sheet(false)"><span class="i">👁</span><span><b>Посмотреть как клиент</b><small>открыть витрину</small></span></div>`;
   sheet(true);
 }
 function presCanvas(o){
