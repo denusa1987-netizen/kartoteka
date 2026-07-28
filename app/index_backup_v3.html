@@ -1022,27 +1022,6 @@ html, body {
 .pickrow img{width:52px;height:44px;object-fit:cover;border-radius:8px}
 .pickrow .pph{width:52px;height:44px;border-radius:8px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:17px}
 .sortbtn{background:none;border:0;color:rgba(255,255,255,.8);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;padding:4px 0}
-/* ================= TEMPLATES / PRO ================= */
-.tpl{border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:9px;background:#fff;cursor:pointer}
-.tpl:active{background:var(--bg)}
-.tpl b{display:block;font-size:14.5px;margin-bottom:4px}
-.tpl p{margin:0;color:var(--mut);font-size:12.5px;font-weight:500;line-height:1.45;white-space:pre-wrap}
-.protag{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#b89241,#d9b46a);color:#0f172a;
-  font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;letter-spacing:.03em;margin-left:7px}
-.limitbar{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin:12px 14px 0;box-shadow:0 6px 18px -8px rgba(15,23,42,.08)}
-.limitbar .lt{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;margin-bottom:8px}
-.limitbar .lt span{color:var(--mut);font-weight:600;font-size:12px}
-.lbar{height:7px;background:#eef1f5;border-radius:4px;overflow:hidden}
-.lbar i{display:block;height:100%;background:linear-gradient(90deg,#b89241,#d9b46a);border-radius:4px;transition:width .3s}
-.lbar.full i{background:linear-gradient(90deg,#c25050,#e07070)}
-.limitbar .lb{margin-top:10px;width:100%;border:0;border-radius:11px;padding:11px;font-size:14px;font-weight:800;
-  background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;cursor:pointer;font-family:inherit}
-.priceplan{border:1.5px solid var(--line);border-radius:16px;padding:18px;margin-bottom:12px;background:#fff}
-.priceplan.on{border-color:var(--gold);background:linear-gradient(180deg,#fcfbf7,#fff)}
-.priceplan h4{margin:0 0 4px;font-size:17px;font-weight:800}
-.priceplan .pp{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:6px 0 10px}
-.priceplan .pp small{font-size:13px;color:var(--mut);font-weight:600}
-.priceplan ul{margin:0;padding-left:20px;color:var(--soft);font-size:13.5px;font-weight:500;line-height:1.75}
 /* ================= PROFILE ================= */
 .pver {
   color: var(--mut);
@@ -1064,7 +1043,6 @@ html, body {
       <button class="sortbtn" id="sortb" onclick="cycleSort()"></button>
     </div>
     <div class="chips" id="chips"></div>
-    <div id="limitbox"></div>
     <div id="list"></div>
   </div>
 
@@ -1097,10 +1075,6 @@ html, body {
       <input id="pf-tg" placeholder="t.me/username">
       <button class="fbtn" onclick="saveProfile()">Сохранить</button>
       <div class="sect" style="margin-top:18px">
-        <h3>Тариф</h3>
-        <div id="planbox"></div>
-      </div>
-      <div class="sect" style="margin-top:14px">
         <h3>Статистика</h3>
         <div class="stats" id="statsbox"></div>
       </div>
@@ -1110,7 +1084,7 @@ html, body {
         <label style="margin-top:10px">Импорт из файла</label>
         <input type="file" accept=".json" onchange="importAll(this)">
       </div>
-      <div class="pver">Картотека v4.0 · данные хранятся на этом устройстве<span id="cloudnote"></span></div>
+      <div class="pver">Картотека v3.0 · данные хранятся на этом устройстве<span id="cloudnote"></span></div>
     </div>
   </div>
 
@@ -1162,11 +1136,6 @@ function showDel(id){ return new Promise(res=>{ tx('shows','readwrite').delete(i
 let OBJ=[], filter='all', cur=null, slide=0, editId=null, formPhotos=[], formFeats=[];
 let BUY=[], bfilter='all', bcur=null, beditId=null;
 let SHOW=[], sortBy='new';
-let LIC={pro:false,until:0,code:''};
-const FREE_LIMIT=10;
-const isPro=()=>LIC.pro && (!LIC.until || LIC.until>Date.now());
-const canAdd=()=>isPro() || OBJ.length<FREE_LIMIT;
-const BUY_URL='https://t.me/deniskrytsin';
 const B_LABEL={new:'Новый',show:'На показах',deal:'Сделка',off:'Отказ'};
 const RX={like:['👍 Понравилось','rx-like'],think:['🤔 Думает','rx-think'],no:['👎 Не подошло','rx-no']};
 const today=()=>new Date().toISOString().slice(0,10);
@@ -1236,7 +1205,6 @@ function render(){
   }).sort((a,b)=> sortBy==='cheap' ? a.price-b.price : sortBy==='rich' ? b.price-a.price : b.created-a.created);
   const sb=document.getElementById('sortb');
   if(sb) sb.textContent = '↕ '+({new:'сначала новые',cheap:'сначала дешевле',rich:'сначала дороже'}[sortBy]);
-  renderLimit();
   const el=document.getElementById('list');
   if(!OBJ.length){
     el.innerHTML=`<div class="empty"><div class="big">🗂</div>Пока пусто.<br>Нажмите <b>➕ Добавить</b> — и первый объект появится в картотеке за минуту.</div>`;
@@ -1264,20 +1232,6 @@ function go(name){
   ['list','buyers','profile'].forEach(n=>{const b=document.getElementById('nb-'+n);if(b)b.classList.toggle('on',n==name)});
   window.scrollTo(0,0);
   if(TG){ try{ (name=='list'||name=='buyers')?TG.BackButton.hide():TG.BackButton.show(); }catch(e){} }
-}
-function renderLimit(){
-  const box=document.getElementById('limitbox'); if(!box)return;
-  if(isPro()){
-    box.innerHTML=`<div class="limitbar"><div class="lt"><span style="color:var(--ink);font-weight:800">Тариф Pro<span class="protag">★ PRO</span></span>
-      <span>без ограничений${LIC.until?' · до '+ru(new Date(LIC.until).toISOString().slice(0,10)):''}</span></div></div>`;
-    return;
-  }
-  const n=OBJ.length, pct=Math.min(100,Math.round(n/FREE_LIMIT*100)), full=n>=FREE_LIMIT;
-  box.innerHTML=`<div class="limitbar">
-    <div class="lt"><span style="color:var(--ink);font-weight:800">Бесплатный тариф</span><span>${n} из ${FREE_LIMIT} объектов</span></div>
-    <div class="lbar ${full?'full':''}"><i style="width:${pct}%"></i></div>
-    ${full?`<button class="lb" onclick="openPlans()">★ Снять ограничение — Pro</button>`:''}
-  </div>`;
 }
 function navBadge(){
   const b=document.getElementById('nb-buyers'); if(!b)return;
@@ -1318,9 +1272,8 @@ function openDetail(id){
       </div>
       <div class="actions">
         <button class="abtn a1" onclick="openShare()">📤 Отправить клиенту<small>ссылка · PDF · картинка</small></button>
-        <button class="abtn a2" onclick="openTemplates({obj:cur})">💬 Написать<small>шаблоны собственнику</small></button>
+        <button class="abtn a2" onclick="openForm('${o.id}')">✏️ Изменить<small>фото · цена · статус</small></button>
       </div>
-      <button class="a3" style="color:var(--acc);border-color:#cfe0f0" onclick="openForm('${o.id}')">✏️ Изменить объект</button>
       <button class="a3" style="color:var(--acc);border-color:#cfe0f0" onclick="dupObj('${o.id}')">⧉ Дублировать объект</button>
       <button class="a3" onclick="delObj('${o.id}')">🗑 Удалить объект</button>
     </div>`;
@@ -1334,7 +1287,6 @@ function swipe(d){
 }
 async function setStatus(s){ cur.status=s; await dbPut(cur); OBJ=await dbAll(); openDetail(cur.id); toast('Статус: '+ST_LABEL[s]); cloudBackup(); }
 async function dupObj(id){
-  if(!canAdd()){ openPlans(); return; }
   const o=OBJ.find(x=>x.id===id); if(!o)return;
   const c={...o, id:'o'+Date.now(), addr:o.addr+' (копия)', created:Date.now(), linkId:undefined, status:'sale'};
   await dbPut(c); OBJ=await dbAll(); render(); openDetail(c.id); toast('Копия создана — поправьте адрес и цену'); cloudBackup();
@@ -1351,7 +1303,6 @@ async function delObj(id){
 
 /* ================= FORM ================= */
 function openForm(id){
-  if(!id && !canAdd()){ openPlans(); return; }
   editId=id||null;
   const o=id?OBJ.find(x=>x.id===id):null;
   formPhotos=o?[...o.photos]:[];
@@ -1679,10 +1630,9 @@ function openBuyer(id){
           </div>`).join(''):`<div class="notes" style="color:var(--mut)">Пока нет объектов в бюджете клиента. Добавьте объекты — подбор обновится сам.</div>`}
       </div>
       <div class="actions">
-        <button class="abtn a1" onclick="shareMatches()">📤 Подборка<small>объекты в бюджете</small></button>
-        <button class="abtn a2" onclick="openTemplates({buyer:bcur})">💬 Написать<small>готовые шаблоны</small></button>
+        <button class="abtn a1" onclick="shareMatches()">📤 Отправить подборку<small>объекты в бюджете клиента</small></button>
+        <button class="abtn a2" onclick="openBuyerForm('${b.id}')">✏️ Изменить<small>бюджет · запрос · статус</small></button>
       </div>
-      <button class="a3" style="color:var(--acc);border-color:#cfe0f0" onclick="openBuyerForm('${b.id}')">✏️ Изменить данные</button>
       <button class="a3" onclick="delBuyer('${b.id}')">🗑 Удалить покупателя</button>
     </div>`;
   go('buyer');
@@ -1770,125 +1720,6 @@ async function saveBuyer(){
   toast('Сохранено'); openBuyer(b.id);
 }
 
-/* ================= ШАБЛОНЫ СООБЩЕНИЙ ================= */
-function tplVars(ctx){
-  const o=ctx.obj, b=ctx.buyer;
-  return {
-    '{имя}': b?b.name.split(' ')[0]:'',
-    '{клиент}': b?b.name:'',
-    '{объект}': o?`${o.type} · ${o.addr}`:'',
-    '{цена}': o?fmt(o.price):'',
-    '{адрес}': o?o.addr:'',
-    '{бюджет}': b?fmt(b.budget):'',
-    '{риэлтор}': PROFILE.name||'',
-    '{телефон}': PROFILE.phone||'',
-  };
-}
-function fill(t,ctx){ const v=tplVars(ctx); return t.replace(/\{[а-яё]+\}/gi,m=>v[m]!==undefined?v[m]:m); }
-
-const TEMPLATES=[
-  {id:'first', n:'Первый контакт', need:'buyer',
-   t:'{имя}, здравствуйте! Это {риэлтор}, риэлтор. Записал ваш запрос: бюджет {бюджет}. Подберу варианты и пришлю сегодня-завтра. Если появятся вопросы — пишите или звоните: {телефон}'},
-  {id:'send', n:'Отправляю вариант', need:'both',
-   t:'{имя}, посмотрите вариант: {объект}, {цена}. Отправляю фото и подробности. Скажите, подходит ли в целом — и организую просмотр.'},
-  {id:'invite', n:'Приглашение на показ', need:'both',
-   t:'{имя}, добрый день! Готов показать {объект} ({цена}). Когда вам удобно — сегодня вечером или завтра днём? Покажу и расскажу нюансы по документам.'},
-  {id:'after', n:'После показа', need:'buyer',
-   t:'{имя}, спасибо, что нашли время на просмотр! Поделитесь впечатлением: что понравилось, что нет? По вашим замечаниям подберу точнее.'},
-  {id:'remind', n:'Напоминание о себе', need:'buyer',
-   t:'{имя}, здравствуйте! По вашему запросу появились новые варианты. Актуален ли ещё поиск? Если да — пришлю подборку.'},
-  {id:'owner', n:'Отчёт собственнику', need:'obj',
-   t:'Здравствуйте! По вашей квартире ({адрес}) отчёт за неделю: объявление размещено, показы проводятся, обратную связь фиксирую. Держу вас в курсе, при поступлении предложения сразу сообщу.'},
-  {id:'price', n:'Обоснование цены', need:'obj',
-   t:'По {адрес}: сейчас цена {цена}. Смотрю аналоги в вашем районе и реальные сделки. Предлагаю обсудить стратегию: держим цену или корректируем — расскажу, что показывает рынок.'},
-  {id:'deal', n:'Поздравление со сделкой', need:'buyer',
-   t:'{имя}, поздравляю с покупкой! Было приятно работать. Если понадобится помощь с оформлением, переездом или советом по недвижимости — обращайтесь. И буду благодарен за рекомендацию друзьям 🙂'},
-];
-
-function openTemplates(ctx){
-  const list=TEMPLATES.filter(t=>
-    t.need==='buyer'? !!ctx.buyer : t.need==='obj'? !!ctx.obj : (!!ctx.buyer&&!!ctx.obj));
-  document.getElementById('sheet').innerHTML=`
-    <h3>Быстрые сообщения</h3>
-    <p>Тап — текст готов к отправке, подставлены имя, объект и цена</p>
-    <div style="max-height:52vh;overflow:auto">
-    ${list.map(t=>`<div class="tpl" onclick='useTpl("${t.id}")'><b>${t.n}</b><p>${esc(fill(t.t,ctx).slice(0,120))}${fill(t.t,ctx).length>120?'…':''}</p></div>`).join('')}
-    </div>`;
-  window._tplCtx=ctx;
-  sheet(true);
-}
-function useTpl(id){
-  const t=TEMPLATES.find(x=>x.id===id); if(!t)return;
-  const text=fill(t.t,window._tplCtx||{});
-  const b=(window._tplCtx||{}).buyer;
-  sheet(false);
-  document.getElementById('sheet').innerHTML=`
-    <h3>${t.n}</h3>
-    <p style="white-space:pre-wrap;color:var(--soft);font-size:14px">${esc(text)}</p>
-    ${b&&b.phone?`<div class="shopt" onclick="sheet(false);location.href='https://wa.me/${b.phone.replace(/[^\d]/g,'')}?text=${encodeURIComponent(text)}'"><span class="i">💚</span><span><b>Отправить в WhatsApp</b><small>откроется чат с клиентом</small></span></div>`:''}
-    <div class="shopt" onclick="sheet(false);tplToTelegram(${JSON.stringify(text).replace(/"/g,'&quot;')})"><span class="i">✈️</span><span><b>Отправить в Telegram</b><small>выбрать чат</small></span></div>
-    <div class="shopt" onclick="navigator.clipboard.writeText(${JSON.stringify(text).replace(/"/g,'&quot;')}).then(()=>toast('Скопировано'));sheet(false)"><span class="i">📋</span><span><b>Скопировать текст</b><small>вставить куда угодно</small></span></div>`;
-  sheet(true);
-}
-function tplToTelegram(text){
-  if(TG){ TG.openTelegramLink('https://t.me/share/url?url=%20&text='+encodeURIComponent(text)); return; }
-  window.open('https://t.me/share/url?url=%20&text='+encodeURIComponent(text),'_blank');
-}
-
-/* ================= ТАРИФЫ / PRO ================= */
-function openPlans(){
-  const pro=isPro();
-  document.getElementById('sheet').innerHTML=`
-    <h3>${pro?'Ваш тариф':'Тарифы Картотеки'}</h3>
-    <p>${pro?'Спасибо, что поддерживаете сервис!':'Бесплатно — до '+FREE_LIMIT+' объектов. Покупатели, показы и презентации — без ограничений на любом тарифе.'}</p>
-    <div style="max-height:56vh;overflow:auto">
-      <div class="priceplan ${pro?'':'on'}">
-        <h4>Бесплатно</h4>
-        <div class="pp">0 ₽</div>
-        <ul><li>до ${FREE_LIMIT} объектов</li><li>покупатели и подбор</li><li>показы и напоминания</li><li>ссылки, PDF, шаблоны</li></ul>
-      </div>
-      <div class="priceplan ${pro?'on':''}">
-        <h4>Pro <span class="protag">★ PRO</span></h4>
-        <div class="pp">390 ₽ <small>/ месяц</small></div>
-        <ul><li><b>без ограничения по объектам</b></li><li>всё из бесплатного</li><li>поддержка и новые функции первыми</li></ul>
-        ${pro?`<div style="margin-top:12px;color:var(--green);font-weight:700;font-size:13.5px">✓ Активен${LIC.until?' до '+ru(new Date(LIC.until).toISOString().slice(0,10)):''}</div>`
-             :`<button class="fbtn" style="margin-top:14px" onclick="sheet(false);buyPro()">Купить Pro</button>
-               <button class="addfeat" style="margin-top:9px" onclick="sheet(false);askCode()">У меня есть код активации</button>`}
-      </div>
-    </div>`;
-  sheet(true);
-}
-function buyPro(){
-  const t='Здравствуйте! Хочу оформить Pro в Картотеке.';
-  if(TG){ TG.openTelegramLink(BUY_URL); return; }
-  window.open(BUY_URL,'_blank');
-  toast('Напишите — вышлю реквизиты и код активации');
-}
-function askCode(){
-  document.getElementById('sheet').innerHTML=`
-    <h3>Код активации</h3>
-    <p>Введите код, который получили после оплаты</p>
-    <input id="liccode" placeholder="KRT-XXXX-XXXX" autocomplete="off"
-      style="width:100%;border:1px solid var(--line);border-radius:11px;padding:13px;font-size:16px;font-family:inherit;text-transform:uppercase;letter-spacing:.05em">
-    <button class="fbtn" style="margin-top:12px" onclick="activate()">Активировать</button>`;
-  sheet(true);
-  setTimeout(()=>{const i=document.getElementById('liccode'); if(i)i.focus();},250);
-}
-async function activate(){
-  const code=(document.getElementById('liccode').value||'').trim().toUpperCase();
-  if(!code){ toast('Введите код'); return; }
-  toast('Проверяю код…');
-  try{
-    const r=await fetch(LINK_API+'/api/lic/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
-    const j=await r.json();
-    if(!j.ok){ toast(j.error||'Код не подошёл'); return; }
-    LIC={pro:true,until:j.until,code};
-    await kvSet('lic',LIC);
-    sheet(false); render(); renderLimit();
-    toast('Pro активирован! Ограничение снято 🎉');
-  }catch(e){ toast('Нет связи с сервером'); }
-}
-
 /* ================= SHOWS ================= */
 function showsOfBuyer(bid){ return SHOW.filter(x=>x.buyerId===bid).sort((a,b)=>b.date.localeCompare(a.date)); }
 function showsOfObj(oid){ return SHOW.filter(x=>x.objId===oid).sort((a,b)=>b.date.localeCompare(a.date)); }
@@ -1956,15 +1787,6 @@ async function saveShow(reaction){
 }
 
 /* ================= PROFILE ================= */
-function renderPlan(){
-  const box=document.getElementById('planbox'); if(!box)return;
-  box.innerHTML = isPro()
-    ? `<div style="font-size:15.5px;font-weight:800">Pro <span class="protag">★ PRO</span></div>
-       <div class="notes" style="margin-top:6px">Без ограничений${LIC.until?' · активен до '+ru(new Date(LIC.until).toISOString().slice(0,10)):''}</div>`
-    : `<div style="font-size:15.5px;font-weight:800">Бесплатный</div>
-       <div class="notes" style="margin-top:6px">${OBJ.length} из ${FREE_LIMIT} объектов. Покупатели и показы — без лимита.</div>
-       <button class="fbtn" style="margin-top:12px" onclick="openPlans()">★ Перейти на Pro — 390 ₽/мес</button>`;
-}
 function renderStats(){
   const box=document.getElementById('statsbox'); if(!box)return;
   const active=OBJ.filter(o=>o.status==='sale').length;
@@ -1987,7 +1809,7 @@ function openProfile(){
   document.getElementById('pf-title').value=PROFILE.title||'';
   document.getElementById('pf-phone').value=PROFILE.phone||'';
   document.getElementById('pf-tg').value=PROFILE.tg||'';
-  go('profile'); renderStats(); renderPlan();
+  go('profile'); renderStats();
 }
 async function saveProfile(){
   PROFILE={
@@ -2034,7 +1856,6 @@ function sheet(on){ document.getElementById('sheet').classList.toggle('on',on); 
   OBJ=await dbAll();
   BUY=await buyAll();
   PROFILE=(await kvGet('profile'))||PROFILE;
-  LIC=(await kvGet('lic'))||LIC;
   if(PROFILE.name)document.getElementById('who').textContent=PROFILE.name+' · '+(PROFILE.title||'риэлтор');
   if(TG&&TG.CloudStorage){
     document.getElementById('cloudnote').innerHTML=' · <a href="#" onclick="cloudRestore();return false" style="color:var(--acc)">восстановить из облака Telegram</a>';
