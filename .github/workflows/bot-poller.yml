@@ -16,7 +16,13 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Answer /start messages
+      - name: Answer /start messages (Telegram)
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
         run: python scripts/poller.py
+
+      - name: Answer messages (MAX)
+        if: always()
+        env:
+          MAX_BOT_TOKEN: ${{ secrets.MAX_BOT_TOKEN }}
+        run: python scripts/poller_max.py
