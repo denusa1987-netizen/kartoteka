@@ -22,7 +22,7 @@ WELCOME = (
     "• 🔒 Приватные данные — видите только вы\n"
     "• Презентация в один тап: ссылка, картинка, PDF\n\n"
     "Одна база в MAX, Telegram и браузере — включите синхронизацию в профиле.\n\n"
-    "Открыть: " + APP_URL
+    "Открыть приложение: " + APP_URL
 )
 
 
@@ -42,18 +42,19 @@ def api(method, path, payload=None):
 
 
 def send(chat_id):
-    """Пробуем кнопку мини-приложения; если тип не поддержан — обычная ссылка."""
-    for buttons in (
-        [[{"type": "open_app", "text": "🗂 Открыть Картотеку", "web_app": {"url": APP_URL}}]],
-        [[{"type": "link", "text": "🗂 Открыть Картотеку", "url": APP_URL}]],
-    ):
-        payload = {
-            "text": WELCOME,
-            "attachments": [{"type": "inline_keyboard", "payload": {"buttons": buttons}}],
-        }
-        r = api("POST", "/messages?chat_id=%s" % chat_id, payload)
-        if "ERR" not in r:
-            return r
+    """Кнопка-ссылка на приложение; если не прошла — простой текст."""
+    payload = {
+        "text": WELCOME,
+        "attachments": [
+            {
+                "type": "inline_keyboard",
+                "payload": {"buttons": [[{"type": "link", "text": "🗂 Открыть Картотеку", "url": APP_URL}]]},
+            }
+        ],
+    }
+    r = api("POST", "/messages?chat_id=%s" % chat_id, payload)
+    if "ERR" not in r:
+        return r
     return api("POST", "/messages?chat_id=%s" % chat_id, {"text": WELCOME})
 
 
@@ -69,9 +70,10 @@ def main():
 
     replied = set()
     for u in updates:
+        # реагируем и на запуск бота ("Начать"), и на обычные сообщения
         msg = u.get("message") or {}
         recipient = msg.get("recipient") or {}
-        chat_id = recipient.get("chat_id") or (u.get("chat_id"))
+        chat_id = recipient.get("chat_id") or u.get("chat_id")
         if not chat_id or chat_id in replied:
             continue
         replied.add(chat_id)
