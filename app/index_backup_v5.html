@@ -1043,14 +1043,6 @@ html, body {
 .priceplan .pp{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:6px 0 10px}
 .priceplan .pp small{font-size:13px;color:var(--mut);font-weight:600}
 .priceplan ul{margin:0;padding-left:20px;color:var(--soft);font-size:13.5px;font-weight:500;line-height:1.75}
-/* ================= SYNC ================= */
-.synccode{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border-radius:14px;padding:16px;text-align:center;margin:10px 0}
-.synccode .sc{font-size:19px;font-weight:800;letter-spacing:.12em;font-family:ui-monospace,Menlo,monospace;word-break:break-all}
-.synccode .sl{font-size:11.5px;color:rgba(255,255,255,.6);margin-top:7px;font-weight:600}
-.syncstate{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--soft);margin-top:8px}
-.syncdot{width:8px;height:8px;border-radius:50%;background:#cbd5e1;flex:0 0 auto}
-.syncdot.on{background:var(--green)}
-.syncdot.err{background:var(--red)}
 /* ================= PROFILE ================= */
 .pver {
   color: var(--mut);
@@ -1107,10 +1099,6 @@ html, body {
       <input id="pf-tg" placeholder="t.me/username">
       <button class="fbtn" onclick="saveProfile()">Сохранить</button>
       <div class="sect" style="margin-top:18px">
-        <h3>Синхронизация устройств</h3>
-        <div id="syncbox"></div>
-      </div>
-      <div class="sect" style="margin-top:14px">
         <h3>Тариф</h3>
         <div id="planbox"></div>
       </div>
@@ -1124,7 +1112,7 @@ html, body {
         <label style="margin-top:10px">Импорт из файла</label>
         <input type="file" accept=".json" onchange="importAll(this)">
       </div>
-      <div class="pver">Картотека v6.0 · Telegram · MAX · браузер<span id="cloudnote"></span></div>
+      <div class="pver">Картотека v4.0 · данные хранятся на этом устройстве<span id="cloudnote"></span></div>
     </div>
   </div>
 
@@ -1145,49 +1133,6 @@ html, body {
 const _tg = window.Telegram && window.Telegram.WebApp;
 const TG = _tg && _tg.platform && _tg.platform !== 'unknown' ? _tg : null;
 if (TG) { try { TG.ready(); TG.expand(); } catch(e){} }
-
-/* ================= ПЛАТФОРМА: Telegram / MAX / браузер ================= */
-const MAXAPP = (function(){
-  const w = window;
-  const cand = w.WebApp || w.MaxWebApp || (w.max && w.max.WebApp) || null;   // мост MAX, если он есть
-  if (cand && cand !== _tg) return cand;
-  if (/\bMAX\b|MaxMessenger/i.test(navigator.userAgent||'')) return {};     // внутри MAX без моста
-  return null;
-})();
-const PLAT = {
-  name: TG ? 'tg' : (MAXAPP ? 'max' : 'web'),
-  ready(){
-    try{ if(TG){ TG.ready(); TG.expand(); } else if(MAXAPP && MAXAPP.ready){ MAXAPP.ready(); if(MAXAPP.expand) MAXAPP.expand(); } }catch(e){}
-  },
-  openLink(u){
-    try{
-      if(TG && TG.openLink) return TG.openLink(u);
-      if(MAXAPP && MAXAPP.openLink) return MAXAPP.openLink(u);
-    }catch(e){}
-    window.open(u,'_blank');
-  },
-  shareText(t){
-    try{
-      if(TG) return TG.openTelegramLink('https://t.me/share/url?url=%20&text='+encodeURIComponent(t));
-      if(MAXAPP && MAXAPP.shareText) return MAXAPP.shareText(t);
-    }catch(e){}
-    if(navigator.share) return navigator.share({text:t}).catch(()=>{});
-    if(navigator.clipboard) return navigator.clipboard.writeText(t).then(()=>toast('Скопировано'));
-  },
-  back(show){
-    try{
-      if(TG && TG.BackButton) return show?TG.BackButton.show():TG.BackButton.hide();
-      if(MAXAPP && MAXAPP.BackButton) return show?MAXAPP.BackButton.show():MAXAPP.BackButton.hide();
-    }catch(e){}
-  },
-  onBack(fn){
-    try{
-      if(TG && TG.BackButton) return TG.BackButton.onClick(fn);
-      if(MAXAPP && MAXAPP.BackButton && MAXAPP.BackButton.onClick) return MAXAPP.BackButton.onClick(fn);
-    }catch(e){}
-  },
-};
-PLAT.ready();
 
 /* ================= DB (IndexedDB) ================= */
 let db;
@@ -1220,9 +1165,6 @@ let OBJ=[], filter='all', cur=null, slide=0, editId=null, formPhotos=[], formFea
 let BUY=[], bfilter='all', bcur=null, beditId=null;
 let SHOW=[], sortBy='new';
 let LIC={pro:false,until:0,code:''};
-let SYNC={id:'',key:'',on:false,lastRev:0,lastAt:0,photos:true};
-let DEL=[];                        // «надгробия» удалённых: {id,ts}
-let syncTimer=null, syncBusy=false;
 const FREE_LIMIT=10;
 const isPro=()=>LIC.pro && (!LIC.until || LIC.until>Date.now());
 const canAdd=()=>isPro() || OBJ.length<FREE_LIMIT;
@@ -1323,7 +1265,7 @@ function go(name){
   if(name==='list'||name==='buyers') lastTab=name;
   ['list','buyers','profile'].forEach(n=>{const b=document.getElementById('nb-'+n);if(b)b.classList.toggle('on',n==name)});
   window.scrollTo(0,0);
-  PLAT.back(!(name=='list'||name=='buyers'));
+  if(TG){ try{ (name=='list'||name=='buyers')?TG.BackButton.hide():TG.BackButton.show(); }catch(e){} }
 }
 function renderLimit(){
   const box=document.getElementById('limitbox'); if(!box)return;
@@ -1347,7 +1289,7 @@ function navBadge(){
 }
 function cycleSort(){ sortBy = sortBy==='new'?'cheap':sortBy==='cheap'?'rich':'new'; render(); }
 function addNew(){ lastTab==='buyers' ? openBuyerForm() : openForm(); }
-PLAT.onBack(()=>go('list'));
+if(TG){ try{ TG.BackButton.onClick(()=>go('list')); }catch(e){} }
 
 function openDetail(id){
   cur=OBJ.find(o=>o.id===id); if(!cur)return; slide=0;
@@ -1392,7 +1334,7 @@ function swipe(d){
   const t=document.getElementById('track'); if(t)t.style.transform=`translateX(-${slide*100}%)`;
   document.querySelectorAll('#dots .dot').forEach((el,k)=>el.classList.toggle('on',k==slide));
 }
-async function setStatus(s){ cur.status=s; cur.updatedAt=Date.now(); await dbPut(cur); OBJ=await dbAll(); openDetail(cur.id); toast('Статус: '+ST_LABEL[s]); cloudBackup(); syncTouch(); }
+async function setStatus(s){ cur.status=s; await dbPut(cur); OBJ=await dbAll(); openDetail(cur.id); toast('Статус: '+ST_LABEL[s]); cloudBackup(); }
 async function dupObj(id){
   if(!canAdd()){ openPlans(); return; }
   const o=OBJ.find(x=>x.id===id); if(!o)return;
@@ -1404,9 +1346,9 @@ async function delObj(id){
   try{ ok = TG&&TG.showConfirm ? await new Promise(r=>TG.showConfirm('Удалить объект безвозвратно?',r)) : confirm('Удалить объект безвозвратно?'); }
   catch(e){ ok = confirm('Удалить объект безвозвратно?'); }
   if(!ok)return;
-  await dbDel(id); await markDeleted(id);
-  for(const x of showsOfObj(id)){ await showDel(x.id); await markDeleted(x.id); }
-  OBJ=await dbAll(); SHOW=await showAll(); render(); go('list'); toast('Объект удалён'); cloudBackup(); syncTouch();
+  await dbDel(id);
+  for(const x of showsOfObj(id)) await showDel(x.id);
+  OBJ=await dbAll(); SHOW=await showAll(); render(); go('list'); toast('Объект удалён'); cloudBackup();
 }
 
 /* ================= FORM ================= */
@@ -1489,9 +1431,8 @@ async function saveObj(){
     photos:formPhotos,
     status:editId?(OBJ.find(x=>x.id===editId)||{}).status||'sale':'sale',
     created:editId?(OBJ.find(x=>x.id===editId)||{}).created||Date.now():Date.now(),
-    updatedAt: Date.now(),
   };
-  await dbPut(o); OBJ=await dbAll(); render(); cloudBackup(); syncTouch();
+  await dbPut(o); OBJ=await dbAll(); render(); cloudBackup();
   toast('Сохранено'); openDetail(o.id);
 }
 
@@ -1748,16 +1689,16 @@ function openBuyer(id){
     </div>`;
   go('buyer');
 }
-async function setNext(v){ bcur.next=v; bcur.updatedAt=Date.now(); await buyPut(bcur); BUY=await buyAll(); openBuyer(bcur.id); renderBuyers(); navBadge(); toast(v?'Напоминание: '+ru(v):'Напоминание снято'); cloudBackup(); }
-async function setBStatus(k){ bcur.status=k; bcur.updatedAt=Date.now(); await buyPut(bcur); BUY=await buyAll(); openBuyer(bcur.id); renderBuyers(); toast('Статус: '+B_LABEL[k]); cloudBackup(); syncTouch(); }
+async function setNext(v){ bcur.next=v; await buyPut(bcur); BUY=await buyAll(); openBuyer(bcur.id); renderBuyers(); navBadge(); toast(v?'Напоминание: '+ru(v):'Напоминание снято'); cloudBackup(); }
+async function setBStatus(k){ bcur.status=k; await buyPut(bcur); BUY=await buyAll(); openBuyer(bcur.id); renderBuyers(); toast('Статус: '+B_LABEL[k]); cloudBackup(); }
 async function delBuyer(id){
   let ok;
   try{ ok = TG&&TG.showConfirm ? await new Promise(r=>TG.showConfirm('Удалить покупателя?',r)) : confirm('Удалить покупателя?'); }
   catch(e){ ok = confirm('Удалить покупателя?'); }
   if(!ok)return;
-  await buyDel(id); await markDeleted(id);
-  for(const x of showsOfBuyer(id)){ await showDel(x.id); await markDeleted(x.id); }
-  BUY=await buyAll(); SHOW=await showAll(); renderBuyers(); navBadge(); go('buyers'); toast('Удалено'); cloudBackup(); syncTouch();
+  await buyDel(id);
+  for(const x of showsOfBuyer(id)) await showDel(x.id);
+  BUY=await buyAll(); SHOW=await showAll(); renderBuyers(); navBadge(); go('buyers'); toast('Удалено'); cloudBackup();
 }
 function shareMatches(){
   const b=bcur, ms=matchList(b);
@@ -1765,7 +1706,9 @@ function shareMatches(){
   const t=`Подборка для ${b.name} (бюджет ${fmt(b.budget)}):\n\n`+
     ms.map((o,i)=>`${i+1}. ${o.type} · ${o.addr}\n   ${fmt(o.price)}${o.area?' · '+o.area:''}`).join('\n\n')+
     `\n\n${PROFILE.name||''} ${PROFILE.phone||''}`.trimEnd();
-  PLAT.shareText(t);
+  if(TG){ TG.openTelegramLink('https://t.me/share/url?url=%20&text='+encodeURIComponent(t)); return; }
+  if(navigator.share){ navigator.share({text:t}).catch(()=>{}); return; }
+  navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast('Подборка скопирована'));
 }
 
 function openBuyerForm(id){
@@ -1824,147 +1767,9 @@ async function saveBuyer(){
     own: v('b-own')==='1', source:v('b-source'), next:v('b-next'),
     status: prev?prev.status:'new',
     created: prev?prev.created:Date.now(),
-    updatedAt: Date.now(),
   };
-  await buyPut(b); BUY=await buyAll(); renderBuyers(); navBadge(); cloudBackup(); syncTouch();
+  await buyPut(b); BUY=await buyAll(); renderBuyers(); navBadge(); cloudBackup();
   toast('Сохранено'); openBuyer(b.id);
-}
-
-/* ================= СИНХРОНИЗАЦИЯ ================= */
-function rnd(n){ const a='abcdefghijkmnpqrstuvwxyz23456789'; let r=''; const b=crypto.getRandomValues(new Uint8Array(n));
-  for(const x of b) r+=a[x%a.length]; return r; }
-function syncCode(){ return SYNC.id&&SYNC.key ? (SYNC.id+SYNC.key).toUpperCase().match(/.{1,4}/g).join('-') : ''; }
-function parseCode(str){
-  const c=(str||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-  if(c.length<28) return null;
-  return { id:c.slice(0,12), key:c.slice(12) };
-}
-function syncTouch(){                                   // вызвать после любого изменения данных
-  if(!SYNC.on) return;
-  clearTimeout(syncTimer);
-  syncTimer=setTimeout(()=>syncPush(), 2500);
-}
-async function markDeleted(id){
-  DEL=DEL.filter(d=>d.id!==id); DEL.push({id,ts:Date.now()});
-  if(DEL.length>500) DEL=DEL.slice(-500);
-  await kvSet('deleted',DEL);
-}
-function syncStatus(txt,cls){
-  const el=document.getElementById('syncstate'); if(!el)return;
-  el.innerHTML=`<span class="syncdot ${cls||''}"></span>${txt}`;
-}
-async function syncPush(){
-  if(!SYNC.on||syncBusy) return;
-  syncBusy=true; syncStatus('Отправляю данные…','');
-  try{
-    const objs = SYNC.photos ? OBJ : OBJ.map(o=>({...o,photos:[]}));
-    const data={ v:6, profile:PROFILE, lic:LIC, objects:objs, buyers:BUY, shows:SHOW, deleted:DEL };
-    const r=await fetch(LINK_API+'/api/sync/push',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({id:SYNC.id,key:SYNC.key,data})});
-    const j=await r.json();
-    if(j.error){ syncStatus(j.error,'err'); syncBusy=false; return false; }
-    SYNC.lastRev=j.rev; SYNC.lastAt=Date.now(); await kvSet('sync',SYNC);
-    syncStatus('Синхронизировано · '+new Date(j.rev).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),'on');
-    syncBusy=false; return true;
-  }catch(e){ syncStatus('Нет связи','err'); syncBusy=false; return false; }
-}
-function mergeList(local, remote, key='id'){
-  const map=new Map();
-  for(const it of local) map.set(it[key], it);
-  for(const it of remote){
-    const cur=map.get(it[key]);
-    if(!cur){ map.set(it[key], it); continue; }
-    const a=cur.updatedAt||cur.created||0, b=it.updatedAt||it.created||0;
-    if(b>a) map.set(it[key], it);
-  }
-  return [...map.values()];
-}
-async function syncPull(silent){
-  if(!SYNC.on) return false;
-  if(!silent) syncStatus('Получаю данные…','');
-  try{
-    const r=await fetch(LINK_API+'/api/sync/pull?id='+encodeURIComponent(SYNC.id)+'&key='+encodeURIComponent(SYNC.key));
-    const j=await r.json();
-    if(j.error){ syncStatus(j.error,'err'); return false; }
-    const d=j.data||{};
-    // объединяем «надгробия» и убираем удалённое
-    const remDel=d.deleted||[];
-    const allDel=new Map();
-    for(const x of DEL.concat(remDel)){ const p=allDel.get(x.id); if(!p||x.ts>p.ts) allDel.set(x.id,x); }
-    DEL=[...allDel.values()]; await kvSet('deleted',DEL);
-    const killed=(it)=>{ const t=allDel.get(it.id); return t && t.ts > (it.updatedAt||it.created||0); };
-
-    const objs=mergeList(OBJ, d.objects||[]).filter(o=>!killed(o));
-    const buys=mergeList(BUY, d.buyers||[]).filter(b=>!killed(b));
-    const shws=mergeList(SHOW, d.shows||[]).filter(x=>!killed(x));
-    // фото: не затирать локальные, если пришла версия без фото
-    for(const o of objs){
-      if((!o.photos||!o.photos.length)){
-        const loc=OBJ.find(x=>x.id===o.id);
-        if(loc&&loc.photos&&loc.photos.length) o.photos=loc.photos;
-      }
-    }
-    for(const o of objs) await dbPut(o);
-    for(const b of buys) await buyPut(b);
-    for(const x of shws) await showPut(x);
-    for(const o of OBJ) if(!objs.find(x=>x.id===o.id)) await dbDel(o.id);
-    for(const b of BUY) if(!buys.find(x=>x.id===b.id)) await buyDel(b.id);
-    for(const x of SHOW) if(!shws.find(y=>y.id===x.id)) await showDel(x.id);
-    OBJ=await dbAll(); BUY=await buyAll(); SHOW=await showAll();
-    if(d.profile&&d.profile.name&&!PROFILE.name){ PROFILE=d.profile; await kvSet('profile',PROFILE); }
-    if(d.lic&&d.lic.pro&&(!LIC.pro||(d.lic.until||0)>(LIC.until||0))){ LIC=d.lic; await kvSet('lic',LIC); }
-    SYNC.lastRev=j.rev; SYNC.lastAt=Date.now(); await kvSet('sync',SYNC);
-    render(); renderBuyers(); navBadge(); renderLimit();
-    syncStatus('Синхронизировано · '+new Date(j.rev||Date.now()).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),'on');
-    return true;
-  }catch(e){ syncStatus('Нет связи','err'); return false; }
-}
-async function syncEnable(){
-  SYNC.id=rnd(12); SYNC.key=rnd(20); SYNC.on=true;
-  await kvSet('sync',SYNC);
-  const ok=await syncPush();
-  openSyncSheet();
-  if(ok) toast('Синхронизация включена');
-}
-async function syncConnect(){
-  const raw=(document.getElementById('synccode-in').value||'').trim();
-  const p=parseCode(raw);
-  if(!p){ toast('Код неполный — проверьте'); return; }
-  SYNC.id=p.id; SYNC.key=p.key; SYNC.on=true; await kvSet('sync',SYNC);
-  const ok=await syncPull();
-  if(ok){ await syncPush(); sheet(false); toast('Устройства связаны 🎉'); openProfile(); }
-  else { SYNC.on=false; await kvSet('sync',SYNC); }
-}
-async function syncOff(){
-  SYNC={id:'',key:'',on:false,lastRev:0,lastAt:0,photos:SYNC.photos};
-  await kvSet('sync',SYNC); sheet(false); openProfile(); toast('Синхронизация отключена');
-}
-function openSyncSheet(){
-  const on=SYNC.on;
-  document.getElementById('sheet').innerHTML=`
-    <h3>${on?'Синхронизация включена':'Синхронизация устройств'}</h3>
-    <p>${on?'Откройте Картотеку на другом устройстве или в другом мессенджере и введите этот код — данные станут общими.'
-           :'Одна база в Telegram, MAX и браузере. Всё шифруется вашим личным кодом — без кода данные никто не получит.'}</p>
-    ${on?`
-      <div class="synccode"><div class="sc">${syncCode()}</div><div class="sl">код синхронизации — покажите только себе</div></div>
-      <div class="shopt" onclick="navigator.clipboard.writeText('${syncCode()}').then(()=>toast('Код скопирован'))"><span class="i">📋</span><span><b>Скопировать код</b><small>перенести на другое устройство</small></span></div>
-      <div class="shopt" onclick="syncPull()"><span class="i">🔄</span><span><b>Обновить сейчас</b><small>подтянуть свежие данные</small></span></div>
-      <div class="shopt" onclick="syncOff()"><span class="i">⏹</span><span><b>Отключить</b><small>данные останутся на устройстве</small></span></div>
-    `:`
-      <div class="shopt" onclick="syncEnable()"><span class="i">✨</span><span><b>Включить и получить код</b><small>первое устройство</small></span></div>
-      <div class="shopt" onclick="askSyncCode()"><span class="i">🔗</span><span><b>Подключиться по коду</b><small>у меня уже есть код с другого устройства</small></span></div>
-    `}`;
-  sheet(true);
-}
-function askSyncCode(){
-  document.getElementById('sheet').innerHTML=`
-    <h3>Код с другого устройства</h3>
-    <p>Откройте Картотеку там, где данные уже есть: Профиль → Синхронизация → скопируйте код</p>
-    <input id="synccode-in" placeholder="XXXX-XXXX-XXXX-…" autocomplete="off"
-      style="width:100%;border:1px solid var(--line);border-radius:11px;padding:13px;font-size:15px;font-family:ui-monospace,monospace;letter-spacing:.06em">
-    <button class="fbtn" style="margin-top:12px" onclick="syncConnect()">Связать устройства</button>
-    <div style="text-align:center;color:var(--mut);font-size:12px;margin-top:10px">Данные объединятся: ничего не потеряется</div>`;
-  sheet(true);
 }
 
 /* ================= ШАБЛОНЫ СООБЩЕНИЙ ================= */
@@ -2027,7 +1832,10 @@ function useTpl(id){
     <div class="shopt" onclick="navigator.clipboard.writeText(${JSON.stringify(text).replace(/"/g,'&quot;')}).then(()=>toast('Скопировано'));sheet(false)"><span class="i">📋</span><span><b>Скопировать текст</b><small>вставить куда угодно</small></span></div>`;
   sheet(true);
 }
-function tplToTelegram(text){ PLAT.shareText(text); }
+function tplToTelegram(text){
+  if(TG){ TG.openTelegramLink('https://t.me/share/url?url=%20&text='+encodeURIComponent(text)); return; }
+  window.open('https://t.me/share/url?url=%20&text='+encodeURIComponent(text),'_blank');
+}
 
 /* ================= ТАРИФЫ / PRO ================= */
 function openPlans(){
@@ -2061,7 +1869,7 @@ async function payPro(months){
     const j=await r.json();
     if(!j.paymentUrl){ toast(j.error||'Не удалось создать платёж'); return; }
     await kvSet('payorder',{orderId:j.orderId,months,ts:Date.now()});
-    PLAT.openLink(j.paymentUrl);
+    if(TG&&TG.openLink) TG.openLink(j.paymentUrl); else window.open(j.paymentUrl,'_blank');
     waitPayment(j.orderId, 60);
     toast('Открыл страницу оплаты');
   }catch(e){ toast('Нет связи с сервером оплаты'); }
@@ -2100,7 +1908,8 @@ async function resumePayment(){
 }
 function buyPro(){
   const t='Здравствуйте! Хочу оформить Pro в Картотеке.';
-  PLAT.openLink(BUY_URL);
+  if(TG){ TG.openTelegramLink(BUY_URL); return; }
+  window.open(BUY_URL,'_blank');
   toast('Напишите — вышлю реквизиты и код активации');
 }
 function askCode(){
@@ -2146,7 +1955,7 @@ function showsHtml(list, mode){
     </div>`;
   }).join('');
 }
-async function delShow(id){ await showDel(id); await markDeleted(id); SHOW=await showAll(); refreshCurrent(); toast('Показ удалён'); cloudBackup(); syncTouch(); }
+async function delShow(id){ await showDel(id); SHOW=await showAll(); refreshCurrent(); toast('Показ удалён'); cloudBackup(); }
 function refreshCurrent(){
   if(document.getElementById('buyer-screen').classList.contains('on') && bcur) openBuyer(bcur.id);
   else if(document.getElementById('detail-screen').classList.contains('on') && cur) openDetail(cur.id);
@@ -2185,25 +1994,16 @@ function addShow(objId,buyerId){
 }
 async function saveShow(reaction){
   if(!pendingShow)return;
-  const x={id:'s'+Date.now(), ...pendingShow, date:today(), reaction, note:'', updatedAt:Date.now()};
+  const x={id:'s'+Date.now(), ...pendingShow, date:today(), reaction, note:''};
   await showPut(x); SHOW=await showAll();
   // показ переводит покупателя в статус «На показах»
   const b=BUY.find(y=>y.id===x.buyerId);
   if(b && b.status==='new'){ b.status='show'; await buyPut(b); BUY=await buyAll(); }
   pendingShow=null; sheet(false); renderBuyers(); refreshCurrent(); navBadge();
-  toast('Показ записан'); cloudBackup(); syncTouch();
+  toast('Показ записан'); cloudBackup();
 }
 
 /* ================= PROFILE ================= */
-function renderSync(){
-  const box=document.getElementById('syncbox'); if(!box)return;
-  box.innerHTML = SYNC.on
-    ? `<div class="notes">Одна база в Telegram, MAX и браузере.</div>
-       <div class="syncstate" id="syncstate"><span class="syncdot on"></span>${SYNC.lastAt?'Синхронизировано '+new Date(SYNC.lastAt).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Включена'}</div>
-       <button class="fbtn" style="margin-top:12px;background:#fff;color:var(--acc);border:1.5px solid var(--acc)" onclick="openSyncSheet()">Показать код / настройки</button>`
-    : `<div class="notes">Включите — и одна база будет работать в Telegram, MAX и браузере на всех ваших устройствах.</div>
-       <button class="fbtn" style="margin-top:12px" onclick="openSyncSheet()">🔄 Настроить синхронизацию</button>`;
-}
 function renderPlan(){
   const box=document.getElementById('planbox'); if(!box)return;
   box.innerHTML = isPro()
@@ -2235,7 +2035,7 @@ function openProfile(){
   document.getElementById('pf-title').value=PROFILE.title||'';
   document.getElementById('pf-phone').value=PROFILE.phone||'';
   document.getElementById('pf-tg').value=PROFILE.tg||'';
-  go('profile'); renderStats(); renderPlan(); renderSync();
+  go('profile'); renderStats(); renderPlan();
 }
 async function saveProfile(){
   PROFILE={
@@ -2283,8 +2083,6 @@ function sheet(on){ document.getElementById('sheet').classList.toggle('on',on); 
   BUY=await buyAll();
   PROFILE=(await kvGet('profile'))||PROFILE;
   LIC=(await kvGet('lic'))||LIC;
-  SYNC=(await kvGet('sync'))||SYNC;
-  DEL=(await kvGet('deleted'))||[];
   if(PROFILE.name)document.getElementById('who').textContent=PROFILE.name+' · '+(PROFILE.title||'риэлтор');
   if(TG&&TG.CloudStorage){
     document.getElementById('cloudnote').innerHTML=' · <a href="#" onclick="cloudRestore();return false" style="color:var(--acc)">восстановить из облака Telegram</a>';
@@ -2292,8 +2090,6 @@ function sheet(on){ document.getElementById('sheet').classList.toggle('on',on); 
   }
   render(); renderBuyers(); navBadge();
   resumePayment();
-  if(SYNC.on){ syncPull(true); setInterval(()=>{ if(SYNC.on&&!syncBusy) syncPull(true); }, 5*60*1000); }
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&SYNC.on&&!syncBusy) syncPull(true); });
   if(location.search.includes('pay=ok')){ toast('Проверяю оплату…'); history.replaceState(null,'',location.pathname); }
   if('serviceWorker' in navigator){
     try{
