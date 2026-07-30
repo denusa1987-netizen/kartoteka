@@ -1853,8 +1853,17 @@ function syncStatus(txt,cls){
   const el=document.getElementById('syncstate'); if(!el)return;
   el.innerHTML=`<span class="syncdot ${cls||''}"></span>${txt}`;
 }
-async function syncPush(){
+async function syncPush(skipMerge){
   if(!SYNC.on||syncBusy) return;
+  // защита от затирания: если на сервере есть более свежая версия — сперва слить её
+  if(!skipMerge){
+    try{
+      const rr=await fetch(LINK_API+'/api/sync/rev?id='+encodeURIComponent(SYNC.id)+'&key='+encodeURIComponent(SYNC.key));
+      const rj=await rr.json();
+      if(rj.rev>0 && rj.rev>(SYNC.lastRev||0)){ await syncPull(true); }
+    }catch(e){}
+  }
+  if(syncBusy) return;
   syncBusy=true; syncStatus('Отправляю данные…','');
   try{
     const objs = SYNC.photos ? OBJ : OBJ.map(o=>({...o,photos:[]}));
